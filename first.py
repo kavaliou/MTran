@@ -1,3 +1,4 @@
+from sys import argv
 import re
 
 RESERVED = 'RESERVED'
@@ -77,19 +78,14 @@ def escape(text):
     return result_text
 
 
-def main():
-    filename = "input.txt"
-    inp = open(filename)
-    characters = inp.read()
-    inp.close()
-
+def work(chars):
     position = 0
     buff = ''
     old_reserved, new_reserved, old_literals, new_literals = (None, ) * 4
     result = []
-    while position < len(characters):
-        buff += characters[position]
-        if characters[position] == '\n':
+    while position < len(chars):
+        buff += chars[position]
+        if chars[position] == '\n':
             new_reserved = new_literals = None
             position += 1
         else:
@@ -114,5 +110,13 @@ def main():
             position += 1
     return result
 
+
 if __name__ == '__main__':
-    print main()
+    assert len(argv) == 2
+    filename = argv[1]
+    inp = open(filename)
+    characters = inp.read()
+    inp.close()
+    result = work(characters)
+    for i in result:
+        print i[0], i[1]
