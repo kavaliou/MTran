@@ -1,9 +1,9 @@
-p = '321s'
-p = "321s"
-#qwe "ssd"
-while n > 3.34e23 do
-    p = p * n
-    n = n - 3.21
-end
+//qwe "ssd"
+var s = '321\ns';
+var p = 12;
+var n = 13;
 
-p = "1s"
+while (n > 3.34e1){
+    p = p * n;
+    n = n - 3.21;
+}

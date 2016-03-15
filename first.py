@@ -41,10 +41,14 @@ token_expressions = [
     (':', RESERVED),
     ('[', RESERVED),
     (']', RESERVED),
+    ('{', RESERVED),
+    ('}', RESERVED),
+
+    ('var', RESERVED),
 ]
 
 pol = [
-    (r'#.*', None),
+    (r'//.*', None),
     ('[A-Za-z][A-Za-z0-9_]*$', ID),
 ]
 
@@ -55,6 +59,10 @@ literals = [
     ('[-+]?[0-9]*\.([0-9]+)?$', FLOAT),
     ('[-+]?[0-9]*(\.[0-9]+)?[eE]([+-]?[0-9]+)?$', EXPONENTA),
 ]
+
+separators = (';', '\n')
+
+for_IDs = [NUMBER, FLOAT, EXPONENTA, STRING, ID]
 
 
 def filter_on_text_search(text, mass):
@@ -86,13 +94,29 @@ def escape(text):
 
 
 def work(chars):
+    def check_literals(buff, position):
+        full_text = filter_matches(buff, literals)
+        if full_text:
+            new_full_text = full_text
+            while full_text:
+                new_full_text = full_text
+                position += 1
+                buff += chars[position] if chars[position] != '\n' else ' '
+                full_text = filter_matches(buff, literals)
+            position -= 1
+            entry = [i for i in new_full_text[0]]
+            entry[0] = buff[:-1]
+            result.append(entry)
+            buff = ''
+        return buff, position
+
     position = 0
     buff = ''
     old_reserved, new_reserved, old_pols, new_pols = (None, ) * 4
-    result = []
+    result, ID_result = [], []
     while position < len(chars):
         buff += chars[position]
-        if chars[position] == '\n':
+        if chars[position] in separators:
             new_reserved = new_pols = None
             position += 1
         else:
@@ -100,20 +124,8 @@ def work(chars):
             new_pols = filter_matches(buff, pol)
 
         if not new_reserved and not new_pols:
-            if not old_reserved and not old_pols and '\n' not in buff:
-                full_text = filter_matches(buff, literals)
-                if full_text:
-                    new_full_text = full_text
-                    while full_text:
-                        new_full_text = full_text
-                        position += 1
-                        buff += chars[position] if chars[position] != '\n' else ' '
-                        full_text = filter_matches(buff, literals)
-                    position -= 1
-                    entry = [i for i in new_full_text[0]]
-                    entry[0] = buff[:-1]
-                    result.append(entry)
-                    buff = ''
+            if not old_reserved and not old_pols and not any([x in buff for x in separators]):
+                buff, position = check_literals(buff, position)
                 position += 1
             else:
                 if old_reserved and old_reserved[0][0] == buff[:-1]:
