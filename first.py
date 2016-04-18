@@ -1,149 +1,118 @@
 from sys import argv
+
 import re
-
-RESERVED = 'RESERVED'
-NUMBER = 'NUMBER'
-FLOAT = 'FLOAT'
-EXPONENTA = 'EXPONENTA'
-STRING = 'STRING'
-ID = 'ID'
-
-token_expressions = [
-    (' ', None),
-    ('\n', None),
-    ('\t', None),
-    ('=', RESERVED),
-    (',', RESERVED),
-    ('(', RESERVED),
-    (')', RESERVED),
-    (';', RESERVED),
-    ('+', RESERVED),
-    ('-', RESERVED),
-    ('*', RESERVED),
-    ('/', RESERVED),
-    ('%', RESERVED),
-    ('<', RESERVED),
-    ('<=', RESERVED),
-    ('>', RESERVED),
-    ('>=', RESERVED),
-    ('!=', RESERVED),
-    ('and', RESERVED),
-    ('or', RESERVED),
-    ('not', RESERVED),
-    ('if', RESERVED),
-    ('else', RESERVED),
-    ('print', RESERVED),
-    ('while', RESERVED),
-    ('do', RESERVED),
-    ('for', RESERVED),
-    ('in', RESERVED),
-    ('end', RESERVED),
-    (':', RESERVED),
-    ('[', RESERVED),
-    (']', RESERVED),
-    ('{', RESERVED),
-    ('}', RESERVED),
-
-    ('var', RESERVED),
-]
-
-pol = [
-    (r'//.*', None),
-    ('[A-Za-z][A-Za-z0-9_]*$', ID),
-]
-
-literals = [
-    (r'\"([^\']+)?\"$', STRING),
-    (r'\'([^\"]+)?\'$', STRING),
-    ('[-+]?[0-9]+$', NUMBER),
-    ('[-+]?[0-9]*\.([0-9]+)?$', FLOAT),
-    ('[-+]?[0-9]*(\.[0-9]+)?[eE]([+-]?[0-9]+)?$', EXPONENTA),
-]
-
-separators = (';', '\n')
-
-for_IDs = [NUMBER, FLOAT, EXPONENTA, STRING, ID]
+from ply import lex
 
 
-def filter_on_text_search(text, mass):
-    def l(expression):
-        regexp = re.compile(r'%s' % escape(text))
-        match = regexp.match(expression[0])
-        if match:
-            return True
-    return filter(l, mass)
+# This is the list of token names.
+tokens = (
+    'VARIABLE',
+    'BUILTIN',
+    'DECLARATION',
+    'KEYWORD',
+    'OPERATOR',
+    'PUNCTUATION',
+    'RESERVED',
+    'CONSTANT',
+    'INT',
+    'FLOAT',
+    'BIN_NUMBER',
+    'OCT_NUMBER',
+    'HEX_NUMBER',
+    'STRING',
+    'LPAREN',
+    'RPAREN'
+)
+# These are regular expression rules for simple tokens.
+t_LPAREN = r'\('
+t_RPAREN = r'\)'
+
+t_RESERVED = r'(abstract|boolean|byte|char|class|const|debugger|double|enum|export|' \
+             r'extends|final|float|goto|implements|import|int|interface|long|native|' \
+             r'package|private|protected|public|short|static|super|synchronized|throws|' \
+             r'transient|volatile)\b'
+t_CONSTANT = r'(true|false|null|NaN|Infinity|undefined)\b'
+t_BIN_NUMBER = r'0b[01]+'
+t_OCT_NUMBER = r'0o[0-7]+'
+t_HEX_NUMBER = r'0x[0-9a-fA-F]+'
+t_BUILTIN = r'(Array|Boolean|Date|Error|Function|Math|netscape|' \
+             r'Number|Object|Packages|RegExp|String|Promise|Proxy|sun|decodeURI|' \
+             r'decodeURIComponent|encodeURI|encodeURIComponent|' \
+             r'Error|eval|isFinite|isNaN|isSafeInteger|parseFloat|parseInt|' \
+             r'document|this|window)\b'
+t_DECLARATION = r'(var|let|with|function)\b'
+t_KEYWORD = r'(for|in|while|do|break|return|continue|switch|case|default|if|else|' \
+             r'throw|try|catch|finally|new|delete|typeof|instanceof|void|yield|' \
+             r'this|of)\b'
+t_OPERATOR = r'\+\+|--|~|&&|\?|:|\|\||\\(?=\n)|' \
+             r'(<<|>>>?|=>|==?|!=?|[-<>+*%&|^/])=?'
+# t_VARIABLE = r'[$a-zA-Z_][\w.$]*\s*(:|[+\-*/]?\=)?\b'
+t_VARIABLE = r'[A-Za-z][A-Za-z0-9_]*'
+t_PUNCTUATION = r'(\.\.\.|[{(\[;,]|[})\].])'
 
 
-def filter_matches(text, mass):
-    def l(expression):
-        regexp = re.compile(expression[0])
-        match = regexp.match(text)
-        if match:
-            return True
-    return filter(l, mass)
+
+# Read in a float.  This rule has to be done before the int rule.
+def t_FLOAT(t):
+    r'[0-9][0-9]*\.[0-9]+([eE][0-9]+)?[fd]?'
+    t.value = float(t.value)
+    return t
 
 
-def escape(text):
-    result_text = ''
-    for i in text:
-        if re.search(r'[-[\]{}()*+?.,\\^$|#\s]', i):
-            result_text += '\\%s' % i
+# Read in an int.
+def t_INT(t):
+    r'-?\d+'
+    t.value = int(t.value)
+    return t
+
+
+# Read in a string, as in C.  The following backslash sequences have their
+# usual special meaning: \", \\, \n, and \t.
+def t_STRING(t):
+    r'("(\\\\|\\"|[^"])*")|(\'(\\\\|\\\'|[^\'])*\')'
+    escaped = 0
+    str = t.value[1:-1]
+    new_str = ""
+    for i in range(0, len(str)):
+        c = str[i]
+        if escaped:
+            if c == "n":
+                c = "\n"
+            elif c == "t":
+                c = "\t"
+            new_str += c
+            escaped = 0
         else:
-            result_text += i
-    return result_text
-
-
-def work(chars):
-    def check_literals(buff, position):
-        full_text = filter_matches(buff, literals)
-        if full_text:
-            new_full_text = full_text
-            while full_text:
-                new_full_text = full_text
-                position += 1
-                buff += chars[position] if chars[position] != '\n' else ' '
-                full_text = filter_matches(buff, literals)
-            position -= 1
-            entry = [i for i in new_full_text[0]]
-            entry[0] = buff[:-1]
-            result.append(entry)
-            buff = ''
-        return buff, position
-
-    position = 0
-    buff = ''
-    old_reserved, new_reserved, old_pols, new_pols = (None, ) * 4
-    result, ID_result = [], []
-    while position < len(chars):
-        buff += chars[position]
-        if chars[position] in separators:
-            new_reserved = new_pols = None
-            position += 1
-        else:
-            new_reserved = filter_on_text_search(buff, token_expressions)
-            new_pols = filter_matches(buff, pol)
-
-        if not new_reserved and not new_pols:
-            if not old_reserved and not old_pols and not any([x in buff for x in separators]):
-                buff, position = check_literals(buff, position)
-                position += 1
+            if c == "\\":
+                escaped = 1
             else:
-                if old_reserved and old_reserved[0][0] == buff[:-1]:
-                    if old_reserved[0][1]:
-                        result.append(old_reserved[0])
-                else:
-                    if old_pols and old_pols[0][1]:
-                        entry = [i for i in old_pols[0]]
-                        entry[0] = buff[:-1]
-                        result.append(entry)
-                buff = ''
-                old_reserved = None
-                old_pols = None
-        else:
-            old_reserved = new_reserved
-            old_pols = new_pols
-            position += 1
-    return result
+                new_str += c
+    t.value = new_str
+    return t
+
+
+# Ignore comments.
+def t_comment(t):
+    r'[//][^\n]*'
+    pass
+
+
+# Track line numbers.
+def t_newline(t):
+    r'\n+'
+    t.lineno += len(t.value)
+
+# These are the things that should be ignored.
+t_ignore = ' \t'
+
+
+# Handle errors.
+def t_error(t):
+    raise SyntaxError("syntax error on line %d near '%s'" %
+                      (t.lineno, t.value))
+
+
+lexer = lex.lex(reflags=re.DOTALL | re.UNICODE | re.MULTILINE)
 
 
 if __name__ == '__main__':
@@ -152,6 +121,6 @@ if __name__ == '__main__':
     inp = open(filename)
     characters = inp.read()
     inp.close()
-    result = work(characters)
-    for i in result:
-        print i[0], i[1]
+    lexer.input(characters)
+    for tok in iter(lexer.token, None):
+        print repr(tok.type), repr(tok.value)
