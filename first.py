@@ -8,11 +8,10 @@ from ply import lex
 from ply.lex import TOKEN
 
 tokens = (
-    'VARIABLE', 'INT', 'FLOAT', 'BIN_NUMBER', 'OCT_NUMBER',
-    'HEX_NUMBER', 'STRING', 'LPAREN', 'RPAREN',
+    'VARIABLE', 'INT', 'FLOAT', 'STRING', 'LPAREN', 'RPAREN',
     'OPERATOR', 'SEMICOLON', 'DOT', 'COMMA',
     'VAR', 'FUNCTION', 'RETURN', 'WHILE',
-    'LFIGURPAREN', 'RFIGURPAREN',
+    'LFIGURPAREN', 'RFIGURPAREN', 'EQUAL', 'NOTEQUAL'
 )
 
 reserved = {
@@ -22,6 +21,8 @@ reserved = {
     'while': 'WHILE'
 }
 
+t_EQUAL = r'='
+t_NOTEQUAL = r'!='
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_LFIGURPAREN = r'{'
@@ -29,19 +30,13 @@ t_RFIGURPAREN = r'}'
 t_SEMICOLON = r';'
 t_DOT = r'\.'
 t_COMMA = r','
+t_OPERATOR = r'[-<>+*%&|^/]'
 
 
 @TOKEN(r'[A-Za-z][A-Za-z0-9_]*')
 def t_VARIABLE(t):
     t.type = reserved.get(t.value, 'VARIABLE')
     return t
-
-
-t_BIN_NUMBER = r'0b[01]+'
-t_OCT_NUMBER = r'0o[0-7]+'
-t_HEX_NUMBER = r'0x[0-9a-fA-F]+'
-t_OPERATOR = r'\+\+|--|~|&&|\?|:|\|\||\\(?=\n)|' \
-             r'(<<|>>>?|=>|==?|!=?|[-<>+*%&|^/])=?'
 
 
 def t_FLOAT(t):
@@ -106,4 +101,5 @@ if __name__ == '__main__':
     inp.close()
     lexer.input(characters)
     for tok in iter(lexer.token, None):
-        print '{0:20}   {1}'.format(repr(tok.type), repr(tok.value))
+        pass
+        # print '{0:20}   {1}'.format(repr(tok.type), repr(tok.value))
