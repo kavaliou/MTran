@@ -31,9 +31,6 @@ def p_function(p):
 
 def p_func_header(p):
     '''func_header : FUNCTION VARIABLE LPAREN args RPAREN'''
-    # if len(p) == 5:
-    #     p[0] = Node('func_declaration', [p[3]])
-    # else:
     p[0] = Node('func_declaration', [p[2], p[4]])
 
 
@@ -157,21 +154,34 @@ def p_variable(p):
     '''variable : VARIABLE'''
     p[0] = p[1]
 
+parser_errors = []
 
 def p_error(p):
-    print 'Unexpected token in line %d: %s' % (p.lineno, p)
+    if p is None:
+        parser_errors.append("Syntax error at EOI")
+        e = yacc.YaccSymbol()
+        e.type = 'error'
+        e.value = None
+        parser.errok()
+        return e
+    elif p.type == 'error':
+        parser.errok()
+        return
+    elif hasattr(p, 'value'):
+        parser_errors.append("Syntax error at '%s' in line %s" % (p.value, p.lineno))
+        e = yacc.YaccSymbol()
+        e.type = 'error'
+        e.value = p.value
+        parser.errok()
+        return e
 
 
 parser = yacc.yacc()
 
 
 def build_tree(code):
-    try:
-        p = parser.parse(code)
-        print dir(p)
-        return p
-    except:
-        pass
+    p = parser.parse(code)
+    return p
 
 
 if __name__ == '__main__':
@@ -181,3 +191,7 @@ if __name__ == '__main__':
     characters = inp.read()
     inp.close()
     print build_tree(characters)
+
+    print
+    for error in parser_errors:
+        print error

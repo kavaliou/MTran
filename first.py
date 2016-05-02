@@ -85,9 +85,10 @@ def t_newline(t):
 
 t_ignore = ' \t'
 
+errors = []
 
 def t_error(t):
-    print "Illegal character '%s' at line %s" % (t.value[0], t.lineno)
+    errors.append("Illegal character '%s' at line %s" % (t.value[0], t.lineno))
     t.lexer.skip(1)
 
 lexer = lex.lex(reflags=re.DOTALL | re.UNICODE | re.MULTILINE)
@@ -101,5 +102,8 @@ if __name__ == '__main__':
     inp.close()
     lexer.input(characters)
     for tok in iter(lexer.token, None):
-        pass
-        # print '{0:20}   {1}'.format(repr(tok.type), repr(tok.value))
+        print '{0:20}   {1}'.format(repr(tok.type), repr(tok.value))
+
+    print
+    for error in errors:
+        print error
