@@ -56,14 +56,24 @@ def p_block(p):
 
 def p_body(p):
     '''body :
-            | body line SEMICOLON
-            | body while_statement'''
+            | body line semicolons
+            | body multiline'''
     if len(p) > 1:
         if p[1] is None:
             p[1] = Node('body', [])
         p[0] = p[1].add_parts([p[2]])
     else:
         p[0] = Node('body', [])
+
+
+def p_semicolons(p):
+    '''semicolons : SEMICOLON
+                  | semicolons SEMICOLON'''
+
+
+def p_multiline(p):
+    '''multiline : while_statement'''
+    p[0] = p[1]
 
 
 def p_line(p):
@@ -78,7 +88,8 @@ def p_line(p):
 
 
 def p_while_statement(p):
-    '''while_statement : WHILE LPAREN condition RPAREN block'''
+    '''while_statement : WHILE LPAREN condition RPAREN block
+                       | WHILE LPAREN condition RPAREN line semicolons'''
     p[0] = Node('while', [p[3], p[5]])
 
 
@@ -151,30 +162,33 @@ def p_method(p):
 
 
 def p_variable(p):
-    '''variable : VARIABLE'''
+    """variable : VARIABLE"""
     p[0] = p[1]
 
 parser_errors = []
 
 def p_error(p):
-    if p is None:
-        parser_errors.append("Syntax error at EOI")
-        e = yacc.YaccSymbol()
-        e.type = 'error'
-        e.value = None
-        parser.errok()
-        return e
-    elif p.type == 'error':
-        parser.errok()
-        return
-    elif hasattr(p, 'value'):
-        parser_errors.append("Syntax error at '%s' in line %s" % (p.value, p.lineno))
-        e = yacc.YaccSymbol()
-        e.type = 'error'
-        e.value = p.value
-        parser.errok()
-        return e
+    print 'Unexpected token in line %d: %s' % (p.lineno, p)
 
+# def p_error(p):
+#     if p is None:
+#         parser_errors.append("Syntax error at EOI")
+#         e = yacc.YaccSymbol()
+#         e.type = 'error'
+#         e.value = None
+#         parser.errok()
+#         return e
+#     elif p.type == 'error':
+#         parser.errok()
+#         return
+#     elif hasattr(p, 'value'):
+#         parser_errors.append("Syntax error at '%s' in line %s" % (p.value, p.lineno))
+#         e = yacc.YaccSymbol()
+#         e.type = 'error'
+#         e.value = p.value
+#         parser.errok()
+#         return e
+#
 
 parser = yacc.yacc()
 

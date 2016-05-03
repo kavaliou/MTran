@@ -1,3 +1,4 @@
+from collections import defaultdict
 from sys import argv
 
 import re
@@ -101,9 +102,17 @@ if __name__ == '__main__':
     characters = inp.read()
     inp.close()
     lexer.input(characters)
+    d = defaultdict(list)
     for tok in iter(lexer.token, None):
+        d[tok.type].append(tok)
         print '{0:20}   {1}'.format(repr(tok.type), repr(tok.value))
 
-    print
+
+    print '================'
+    for t in d:
+        for t1 in d[t]:
+            print t1
+        print
+    print '================'
     for error in errors:
         print error
