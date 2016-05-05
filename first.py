@@ -75,9 +75,11 @@ def t_STRING(t):
     return t
 
 
-def t_comment(t):
-    r'[//][^\n]*'
-    pass
+t_ignore_COMMENT = r'\//'
+
+# def t_comment(t):
+#     r'[//][^\n]*'
+#     pass
 
 
 def t_newline(t):

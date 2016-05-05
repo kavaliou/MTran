@@ -1,7 +1,14 @@
+from __future__ import absolute_import
+
 from sys import argv
 
-from first import tokens
+import re
+from ply.lex import LexToken
+
+from first import tokens, lexer
 from ply import yacc
+
+from custom_exceptions import *
 
 
 class Node:
@@ -21,6 +28,16 @@ class Node:
     def __init__(self, type, parts):
         self.type = type
         self.parts = parts
+
+
+variables = []
+
+
+def token_in_stack(name, stack):
+    for item in stack:
+        if isinstance(item, LexToken) and item.value == name:
+            return True
+    return False
 
 
 def p_function(p):
@@ -109,8 +126,16 @@ def p_assign(p):
               | VAR variable EQUAL expr
               | VAR variable EQUAL function'''
     if len(p) == 5:
+        value = p[2]
+        if value in variables:
+            raise VariableOverridingError(value, lexer.lineno)
+        else:
+            variables.append(value)
         p[0] = Node('assign', [p[2], p[4]])
     else:
+        value = p[1]
+        if value not in variables:
+            raise NotAssignedVariableError(value, lexer.lineno)
         p[0] = Node('assign', [p[1], p[3]])
 
 
@@ -153,12 +178,24 @@ def p_arg(p):
            | FLOAT
            | method
            | func'''
+    value = p[1]
+    if isinstance(value, str):
+        if token_in_stack('function', p.stack):
+            variables.append(value)
+        elif value not in variables:
+            raise NotAssignedVariableError(value, lexer.lineno)
     p[0] = Node('arg', [p[1]])
 
 
 def p_method(p):
-    '''method : variable DOT func'''
+    '''method : variable_or_arg DOT func'''
     p[0] = Node('method', [p[1], p[3]])
+
+
+def p_variable_or_arg(p):
+    '''variable_or_arg : variable
+                       | arg'''
+    p[0] = p[1]
 
 
 def p_variable(p):
@@ -197,6 +234,40 @@ def build_tree(code):
     p = parser.parse(code)
     return p
 
+operations = {
+    '+': lambda x, y: x + y,
+    '-': lambda x, y: x - y,
+    '*': lambda x, y: x * y,
+    '/': lambda x, y: x / y,
+}
+
+__variables = {}
+
+def parse_tree(tree):
+    try:
+        tree_type = tree.type
+        parts = tree.parts
+    except AttributeError:
+        return tree
+    if tree_type == 'assign':
+        __variables[parts[0]] = parse_tree(parts[1])
+        return
+    if tree_type == 'arg':
+        arg = parts[0]
+        if isinstance(arg, int):
+            return arg
+        elif arg in __variables:
+            return __variables[arg]
+        else:
+            return 'method'
+    if tree_type in operations:
+        first = parse_tree(parts[0])
+        second = parse_tree(parts[1])
+        if tree_type == '/' and second == 0:
+            raise CustomZeroDivisionError(-1)
+        return operations[tree_type](first, second)
+    for part in parts:
+        parse_tree(part)
 
 if __name__ == '__main__':
     assert len(argv) == 2
@@ -204,7 +275,13 @@ if __name__ == '__main__':
     inp = open(filename)
     characters = inp.read()
     inp.close()
-    print build_tree(characters)
+    try:
+        tree = build_tree(characters)
+        parse_tree(tree)
+    except CustomException as e:
+        print e.message
+        tree = None
+    print tree
 
     print
     for error in parser_errors:
